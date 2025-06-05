@@ -1,0 +1,160 @@
+{
+  "chats": {
+    "1": {
+      "id": 1,
+      "name": "John Doe",
+      "avatar": "/src/assets/images/avatars/cat.jpg",
+      "messages": [
+        {
+          "id": 101,
+          "content": "Hey, can you review my latest code changes?",
+          "time": "10:30",
+          "type": "user"
+        },
+        {
+          "id": 102,
+          "content": "Sure, I'll take a look at them. What changes did you make?",
+          "time": "10:31",
+          "type": "ai"
+        },
+        {
+          "id": 103,
+          "content": "I updated the authentication flow and added some new API endpoints.",
+          "time": "10:32",
+          "type": "user"
+        }
+      ]
+    },
+    "2": {
+      "id": 2,
+      "name": "Jane Smith",
+      "avatar": "/src/assets/images/avatars/cristiano.jpg",
+      "messages": [
+        {
+          "id": 201,
+          "content": "Hi Jane, about tomorrow's meeting",
+          "time": "Yesterday",
+          "type": "user"
+        },
+        {
+          "id": 202,
+          "content": "Yes, what about it?",
+          "time": "Yesterday",
+          "type": "ai"
+        },
+        {
+          "id": 203,
+          "content": "The meeting is scheduled for tomorrow at 2 PM",
+          "time": "Yesterday",
+          "type": "user"
+        }
+      ]
+    },
+    "3": {
+      "id": 3,
+      "name": "Mike Johnson",
+      "avatar": "/src/assets/images/avatars/Peterparker.jpg",
+      "messages": [
+        {
+          "id": 301,
+          "content": "Hey, I need help with the deployment",
+          "time": "Yesterday",
+          "type": "user"
+        },
+        {
+          "id": 302,
+          "content": "What seems to be the issue?",
+          "time": "Yesterday",
+          "type": "ai"
+        },
+        {
+          "id": 303,
+          "content": "The build is failing on the staging server",
+          "time": "Yesterday",
+          "type": "user"
+        },
+        {
+          "id": 304,
+          "content": "Let me check the logs and get back to you",
+          "time": "Yesterday",
+          "type": "ai"
+        },
+        {
+          "id": 305,
+          "content": "Thanks for the help with the deployment!",
+          "time": "Yesterday",
+          "type": "user"
+        }
+      ]
+    },
+    "4": {
+      "id": 4,
+      "name": "Sarah Wilson",
+      "avatar": "/src/assets/images/avatars/EllieWilliams.jpg",
+      "messages": [
+        {
+          "id": 401,
+          "content": "Hi, I need access to the project documentation",
+          "time": "2 days ago",
+          "type": "user"
+        },
+        {
+          "id": 402,
+          "content": "Can you share the project documentation?",
+          "time": "2 days ago",
+          "type": "user"
+        }
+      ]
+    },
+    "5": {
+      "id": 5,
+      "name": "David Brown",
+      "avatar": "/src/assets/images/avatars/whiteguy.jpg",
+      "messages": [
+        {
+          "id": 501,
+          "content": "I've implemented the new feature",
+          "time": "3 days ago",
+          "type": "user"
+        },
+        {
+          "id": 502,
+          "content": "Great! How's it working?",
+          "time": "3 days ago",
+          "type": "ai"
+        },
+        {
+          "id": 503,
+          "content": "The new feature is working great!",
+          "time": "3 days ago",
+          "type": "user"
+        }
+      ]
+    },
+    "6": {
+      "id": 6,
+      "name": "Emily Davis",
+      "avatar": "/src/assets/images/avatars/Peterparker.jpg",
+      "messages": [
+        {
+          "id": 601,
+          "content": "We need to improve the UI",
+          "time": "Last week",
+          "type": "user"
+        },
+        {
+          "id": 602,
+          "content": "What specific improvements are you thinking about?",
+          "time": "Last week",
+          "type": "ai"
+        },
+        {
+          "id": 603,
+          "content": "Let's discuss the UI improvements",
+          "time": "Last week",
+          "type": "user"
+        }
+      ]
+    }
+  }
+} 
