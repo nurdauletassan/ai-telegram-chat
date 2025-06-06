@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import './ChatList.css';
-import { chatService } from '../../services/chatService';
+import { useChats, useCreateAiChat } from '../../services/chatQueries';
 import { Modal } from '../Modal/Modal';
 
 interface Chat {
@@ -15,8 +15,8 @@ interface Chat {
 }
 
 interface ChatListProps {
-  activeFilter: string;
-  onChatSelect: (chat: { id: number; name: string; type: 'human' | 'ai'; }) => void;
+  activeFilter: 'all' | 'human' | 'ai';
+  onChatSelect: (chat: { id: number; name: string; type: 'human' | 'ai' }) => void;
 }
 
 // Helper function to convert time string to comparable value
@@ -52,15 +52,19 @@ export const ChatList = ({ activeFilter, onChatSelect }: ChatListProps) => {
   const [showModal, setShowModal] = useState(false);
   const [newAssistantName, setNewAssistantName] = useState('');
 
+  const { data: humanChats = {} } = useChats('human');
+  const { data: aiChats = {} } = useChats('ai');
+  const createAiChat = useCreateAiChat();
+
   // Get chats from the chat service
   const allChats: Chat[] = [
-    ...Object.values(chatService.getChats('human')).map(chat => ({
+    ...Object.values(humanChats).map(chat => ({
       ...chat,
       lastMessage: chat.messages[chat.messages.length - 1]?.content || '',
       time: chat.messages[chat.messages.length - 1]?.time || '',
       type: 'human' as const
     })),
-    ...Object.values(chatService.getChats('ai')).map(chat => ({
+    ...Object.values(aiChats).map(chat => ({
       ...chat,
       lastMessage: chat.messages[chat.messages.length - 1]?.content || '',
       time: chat.messages[chat.messages.length - 1]?.time || '',
@@ -93,28 +97,21 @@ export const ChatList = ({ activeFilter, onChatSelect }: ChatListProps) => {
     });
   };
 
-  const handleCreateNewAiChat = () => {
-    setShowModal(true);
-  };
-
-  const handleCreateAssistant = () => {
-    if (newAssistantName.trim()) {
-      const newChat = chatService.createNewAiChat(newAssistantName.trim());
-      handleChatClick({
-        ...newChat,
-        lastMessage: '',
-        time: '',
-        type: 'ai',
-        messages: []
-      });
-      setNewAssistantName('');
-      setShowModal(false);
+  const handleCreateNewAiChat = async () => {
+    try {
+      const newChat = await createAiChat.mutateAsync(newAssistantName);
+      if (newChat) {
+        setShowModal(false);
+        setNewAssistantName('');
+        onChatSelect({
+          id: newChat.id,
+          name: newChat.name,
+          type: 'ai'
+        });
+      }
+    } catch (error) {
+      console.error('Error creating new AI chat:', error);
     }
-  };
-
-  const handleCancel = () => {
-    setNewAssistantName('');
-    setShowModal(false);
   };
 
   return (
@@ -131,67 +128,64 @@ export const ChatList = ({ activeFilter, onChatSelect }: ChatListProps) => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <button className="new-chat-button" onClick={handleCreateNewAiChat}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z" fill="currentColor"/>
-          </svg>
-        </button>
+        {activeFilter === 'ai' && (
+          <button className="new-chat-button" onClick={() => setShowModal(true)}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z" fill="currentColor"/>
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className="chat-items-container">
-        {filteredChats.map(chat => {
-          // Get the last message or use empty string if no messages
-          const lastMessage = chat.messages && chat.messages.length > 0 
-            ? chat.messages[chat.messages.length - 1].content 
-            : '';
-
-          return (
-            <div
-              key={chat.id}
-              className={`chat-item ${selectedChat === chat.id ? 'active' : ''}`}
-              onClick={() => handleChatClick(chat)}
-            >
-              <div className="chat-avatar">
-                <img src={chat.avatar} alt={chat.name} />
-              </div>
-              <div className="chat-info">
-                <div className="chat-header">
-                  <h3>{chat.name}</h3>
-                  <span className="chat-time">{chat.time}</span>
-                </div>
-                <p className="chat-preview">{lastMessage}</p>
-              </div>
-              {chat.unread && (
-                <div className="unread-badge">{chat.unread}</div>
-              )}
+        {filteredChats.map((chat) => (
+          <div
+            key={chat.id}
+            className={`chat-item ${selectedChat === chat.id ? 'active' : ''}`}
+            onClick={() => handleChatClick(chat)}
+          >
+            <div className="chat-avatar">
+              <img src={chat.avatar} alt={chat.name} />
             </div>
-          );
-        })}
+            <div className="chat-info">
+              <div className="chat-header">
+                <h3>{chat.name}</h3>
+                <span className="chat-time">{chat.time}</span>
+              </div>
+              <p className="chat-preview">{chat.lastMessage}</p>
+            </div>
+            {chat.unread && (
+              <div className="unread-badge">{chat.unread}</div>
+            )}
+          </div>
+        ))}
       </div>
 
-      <Modal
-        isOpen={showModal}
-        onClose={handleCancel}
-        title="Create New AI Assistant"
-      >
-        <input
-          type="text"
-          placeholder="Enter assistant name..."
-          value={newAssistantName}
-          onChange={(e) => setNewAssistantName(e.target.value)}
-          className="modal-input"
-        />
-        <div className="modal-buttons">
-          <button onClick={handleCancel} className="cancel-button">Cancel</button>
-          <button 
-            onClick={handleCreateAssistant} 
-            className="create-button"
-            disabled={!newAssistantName.trim()}
-          >
-            Create
-          </button>
-        </div>
-      </Modal>
+      {showModal && (
+        <Modal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          title="Create New AI Assistant"
+        >
+          <input
+            type="text"
+            placeholder="Enter assistant name..."
+            value={newAssistantName}
+            onChange={(e) => setNewAssistantName(e.target.value)}
+            className="modal-input"
+          />
+          <div className="modal-buttons">
+            <button onClick={() => setShowModal(false)} className="cancel-button">Cancel</button>
+            <button
+              onClick={handleCreateNewAiChat}
+              disabled={createAiChat.isPending}
+              className="create-button"
+            >
+              {createAiChat.isPending ? 'Creating...' : 'Create'}
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }; 

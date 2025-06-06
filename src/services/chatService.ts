@@ -1,5 +1,4 @@
 import chatData from '../data/chats.json';
-import { geminiService } from './geminiService';
 
 interface Message {
   id: number;
@@ -114,35 +113,8 @@ class ChatService {
     if (!messageExists) {
       // Create a new array to ensure we're not mutating the original
       chats[chatId].messages = [...chats[chatId].messages, message];
-      
-      // If this is a user message in an AI chat, generate AI response
-      if (type === 'ai' && message.type === 'user') {
-        try {
-          const aiResponse = await geminiService.generateResponse(message.content);
-          const aiMessage: Message = {
-            id: Date.now() + 1,
-            content: aiResponse,
-            time: new Date().toLocaleTimeString(),
-            type: 'ai'
-          };
-          
-          // Check if this AI response already exists
-          const aiResponseExists = chats[chatId].messages.some(
-            msg => msg.type === 'ai' && msg.content === aiResponse
-          );
-          
-          if (!aiResponseExists) {
-            chats[chatId].messages = [...chats[chatId].messages, aiMessage];
-            // Save to localStorage after adding AI response
-            this.saveToLocalStorage();
-          }
-        } catch (error) {
-          console.error('Error generating AI response:', error);
-        }
-      } else {
-        // Save to localStorage after adding user message
-        this.saveToLocalStorage();
-      }
+      // Save to localStorage after adding message
+      this.saveToLocalStorage();
     }
   }
 

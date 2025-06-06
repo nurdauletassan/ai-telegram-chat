@@ -1,19 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
-import { geminiService } from '../../services/geminiService';
-import { chatService } from '../../services/chatService';
+import { useRef, useEffect } from 'react';
+import { useChat, useSendMessage } from '../../services/chatQueries';
 import './ChatWindow.css';
 
 // Import icons
 import uploadIcon from '../../assets/icons/upload.svg';
 import sendIcon from '../../assets/icons/send.svg';
 import checkDoubleIcon from '../../assets/icons/check-double.svg';
-
-interface Message {
-  id: string;
-  content: string;
-  timestamp: string;
-  isUser: boolean;
-}
 
 interface ChatWindowProps {
   selectedChat: {
@@ -24,104 +16,48 @@ interface ChatWindowProps {
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({ selectedChat }) => {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { data: chat, isLoading: isChatLoading } = useChat(
+    selectedChat?.id ?? 0,
+    selectedChat?.type ?? 'human'
+  );
+  const sendMessage = useSendMessage();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
-    if (selectedChat) {
-      // Load messages from chatService
-      const chat = chatService.getChat(selectedChat.id, selectedChat.type);
-      if (chat) {
-        const formattedMessages = chat.messages.map(msg => ({
-          id: msg.id.toString(),
-          content: msg.content,
-          timestamp: msg.time,
-          isUser: msg.type === 'user'
-        }));
-        setMessages(formattedMessages);
-      } else {
-        // If chat doesn't exist, create a new one
-        chatService.addMessage(selectedChat.id, selectedChat.type, {
-          id: Date.now(),
-          content: selectedChat.type === 'ai' ? 'Hello! How can I help you today?' : 'Hi there!',
-          time: new Date().toLocaleTimeString(),
-          type: selectedChat.type === 'ai' ? 'ai' : 'user'
-        });
-        setMessages([{
-          id: Date.now().toString(),
-          content: selectedChat.type === 'ai' ? 'Hello! How can I help you today?' : 'Hi there!',
-          timestamp: new Date().toLocaleTimeString(),
-          isUser: selectedChat.type !== 'ai'
-        }]);
-      }
-    }
-  }, [selectedChat]);
-
-  useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [chat?.messages]);
 
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedChat) return;
+  const handleSendMessage = async (content: string) => {
+    if (!selectedChat || !content.trim()) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: newMessage,
-      timestamp: new Date().toLocaleTimeString(),
-      isUser: true,
+    const userMessage = {
+      id: Date.now(),
+      content: content,
+      time: new Date().toLocaleTimeString(),
+      type: 'user' as const
     };
 
-    // Add user message to chatService
-    chatService.addMessage(selectedChat.id, selectedChat.type, {
-      id: parseInt(userMessage.id),
-      content: userMessage.content,
-      time: userMessage.timestamp,
-      type: 'user'
-    });
-
-    setMessages(prev => [...prev, userMessage]);
-    setNewMessage('');
-
-    // Only use Gemini API for AI chats
-    if (selectedChat.type === 'ai') {
-      setIsLoading(true);
-      try {
-        const response = await geminiService.generateResponse(newMessage);
-        
-        const aiMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          content: response,
-          timestamp: new Date().toLocaleTimeString(),
-          isUser: false,
-        };
-
-        // Add AI message to chatService
-        chatService.addMessage(selectedChat.id, selectedChat.type, {
-          id: parseInt(aiMessage.id),
-          content: aiMessage.content,
-          time: aiMessage.timestamp,
-          type: 'ai'
-        });
-
-        setMessages(prev => [...prev, aiMessage]);
-      } catch (error) {
-        console.error('Error sending message:', error);
-      } finally {
-        setIsLoading(false);
-      }
+    try {
+      await sendMessage.mutateAsync({
+        chatId: selectedChat.id,
+        type: selectedChat.type,
+        message: userMessage
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      const content = e.currentTarget.value;
+      e.currentTarget.value = '';
+      handleSendMessage(content);
     }
   };
 
@@ -135,6 +71,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ selectedChat }) => {
     );
   }
 
+  const messages = chat?.messages.map(msg => ({
+    id: msg.id.toString(),
+    content: msg.content,
+    timestamp: msg.time,
+    isUser: msg.type === 'user'
+  })) ?? [];
+
   return (
     <div className="chat-window">
       <div className="chat-window-header">
@@ -147,7 +90,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ selectedChat }) => {
       </div>
 
       <div className="chat-messages">
-        {messages.length === 0 && selectedChat.type === 'ai' ? (
+        {isChatLoading ? (
+          <div className="loading">Loading...</div>
+        ) : messages.length === 0 && selectedChat.type === 'ai' ? (
           <div className="welcome-message">
             <h2>Hello! I'm your AI assistant</h2>
             <p>How can I help you today?</p>
@@ -172,7 +117,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ selectedChat }) => {
             </div>
           ))
         )}
-        {isLoading && selectedChat.type === 'ai' && (
+        {sendMessage.isPending && selectedChat.type === 'ai' && (
           <div className="message ai-message">
             <div className="message-content">
               <div className="typing-indicator">
@@ -192,16 +137,18 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ selectedChat }) => {
         </button>
         <textarea
           className="message-input"
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="Type a message..."
-          disabled={isLoading}
+          disabled={sendMessage.isPending}
         />
         <button
           className="send-button"
-          onClick={handleSendMessage}
-          disabled={!newMessage.trim() || isLoading}
+          onClick={(e) => {
+            const input = e.currentTarget.previousElementSibling as HTMLTextAreaElement;
+            handleSendMessage(input.value);
+            input.value = '';
+          }}
+          disabled={sendMessage.isPending}
         >
           <img src={sendIcon} alt="Send" />
         </button>
